@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/local/bin/python3.6
 
+import sys
 import getpass
 import imaplib
 import email
@@ -25,39 +26,41 @@ typ,[data] = conn.select(inbox, readonly=True)
 if typ != "OK":
     sys.exit("select failed")
 #typ,[data] = conn.search(None, "ALL")
-typ,[data] = conn.search(None, "UNSEEN")
-if typ != "OK":
-    sys.exit("search failed")
-for id in data.split():
-    typ,data = conn.fetch(id, "(RFC822)")
-    raw = data[0][1]
-    msg = email.message_from_bytes(raw)
-    print ("subject={}".format(get_header(msg, "Subject")))
-    print ("from={}".format(get_header(msg, "From")))
-    
-# https://qiita.com/croquisdukke/items/2b7fabbe9df95e28f084
-imap_idletag = conn._new_tag()
-conn.send(b'%s IDLE\r\n'%(imap_idletag))
-print('Waiting for a message...')
-while True:
-    imap_line = conn.readline().strip().decode('utf-8');
-    print ("imap_list={}".format(imap_line))
-    if imap_line.startswith('* BYE ') or (len(imap_line) == 0):
-        print('Jumping out of a loop.')
-        flag = False
-        break
-    if imap_line.endswith('EXISTS'):
-        print('You got a message.')
-        conn.send(b'DONE\r\n')
-        imap_line = conn.readline().strip().decode('utf-8');
-        print ("imap_list={}".format(imap_line))
-        if imap_line.startswith('{} OK'.format(imap_idletag.decode('utf-8'))):
-            print('Terminating IDLE mode')
-            flag = True
-        else :
-            print('Failed to terminate')
-            flag = False
-        break
-print ("flag={}".format(flag))
 
-print ("done")
+last_unseen = set()
+def show_recent():
+    global last_unseen
+    typ,[data] = conn.search(None, "UNSEEN")
+    if typ != "OK":
+        sys.exit("search failed")
+    unseen = data.split()
+    for id in unseen:
+        if id in last_unseen:
+            continue
+        typ,data = conn.fetch(id, "(RFC822)")
+        raw = data[0][1]
+        msg = email.message_from_bytes(raw)
+        print ("{} {}".format(get_header(msg, "From"), get_header(msg, "Subject")))
+    last_unseen = set(unseen)
+
+def bell():
+        print("\a", end="")
+        
+show_recent()
+print ("---")
+
+while True:
+    imap_idletag = conn._new_tag()
+    conn.send(b'%s IDLE\r\n'%(imap_idletag))
+    while True:
+        resp = conn.readline().strip().decode('utf-8');
+        #print ("resp={}".format(resp))
+        if resp.startswith('* BYE ') or (len(resp) == 0):
+            break
+        if resp.startswith("* "):
+            if resp.endswith('EXISTS'):
+                conn.send(b'DONE\r\n')
+        if resp.startswith('{} OK'.format(imap_idletag.decode('utf-8'))):
+            break
+    show_recent()
+    bell()
