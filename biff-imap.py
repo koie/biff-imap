@@ -7,8 +7,9 @@ import imaplib
 import email
 
 parser = argparse.ArgumentParser(description="Dumb Biff for IMAP")
-parser.add_argument("--host", help="IMAP server", default="127.0.0.1")
-parser.add_argument("--port", help="IMAP port", default=143)
+parser.add_argument("--host", help="IMAP server", default="")
+parser.add_argument("--port", help="IMAP port", default=None)
+parser.add_argument("--ssl", help="use SSL", action="store_true")
 parser.add_argument("--user", help="User", default=getpass.getuser())
 parser.add_argument("--passwd", help="Password")
 parser.add_argument("--inbox", help="inbox folder", default="inbox")
@@ -20,8 +21,18 @@ if args.passwd is None:
     args.passwd = getpass.getpass()
 
 if args.debug:
-    print ("DEBUG: LOGIN {!r} {!r} {!r}".format(args.host, args.port, args.user))
-conn = imaplib.IMAP4(args.host, args.port)
+    print ("DEBUG: connect {!r} {!r}".format(args.host, args.port))
+if args.ssl:
+    imap_ctor = imaplib.IMAP4_SSL
+else:
+    imap_ctor = imaplib.IMAP4
+if args.port:
+    conn = imap_ctor(args.host, args.port)
+else:
+    conn = imap_ctor(args.host)
+
+if args.debug:
+    print ("DEBUG: LOGIN{!r}".format(args.user))
 typ,[data] = conn.login(args.user, args.passwd)
 del args.passwd	#give me consolation
 if args.debug:
