@@ -1,0 +1,3 @@
+biff-imap watchs the mailbox via IMAP4.
+when new mails are arrived, biff-imap shows the mails and rings bell.
+if you use tmux, the status line notify you.
