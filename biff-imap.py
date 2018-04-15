@@ -14,6 +14,7 @@ parser.add_argument("--user", help="User", default=getpass.getuser())
 parser.add_argument("--passwd", help="Password")
 parser.add_argument("--inbox", help="inbox folder", default="inbox")
 parser.add_argument("--full", help="full screen mode", action="store_true")
+parser.add_argument("--noinit", help="show arrival messages only", action="store_true")
 parser.add_argument("--debug", help="debug mode", action="store_true")
 args = parser.parse_args()
 
@@ -59,15 +60,23 @@ def get_header(msg,key):
     v = msg[key]
     if v is None:
         return ""
-    hdr = email.header.make_header(email.header.decode_header(v))
-    return str(hdr)
+    try:
+        hdr = email.header.make_header(email.header.decode_header(v))
+    except:
+        return str(v)
+    else:
+        return str(hdr)
+
+def bell():
+        print("\a", end="")
 
 last_unseen = set()
-def show_recent():
+def show_recent(nodisplay=False):
     global last_unseen
     if args.debug:
         print ("DEBUG: SEARCH UNSEEN")
-    typ,[data] = conn.search(None, "UNSEEN")
+    #typ,[data] = conn.search(None, "UNSEEN")
+    typ,[data] = conn.uid("SEARCH", "UNSEEN")
     if args.debug:
         print ("DEBUG: {!r} {!r}".format(typ, data))
     if typ != "OK":
@@ -78,12 +87,16 @@ def show_recent():
             print ("----")
         else:
             cls()
+    n = 0
     for id in unseen:
+        if nodisplay:
+            continue
         if not args.full and id in last_unseen:
             continue
         if args.debug:
             print ("DEBUG: FETCH {!r}".format(id))
-        typ,data = conn.fetch(id, "(RFC822)")
+        #typ,data = conn.fetch(id, "(RFC822)")
+        typ,data = conn.uid("FETCH", id, "(RFC822)")
         if args.debug:
             print ("DEBUG: {!r} {!r}".format(typ, data))
         raw = data[0][1]
@@ -92,12 +105,12 @@ def show_recent():
         print ("To: {}".format(get_header(msg, "To")))
         print ("Subject: {}".format(get_header(msg, "Subject")))
         print ()
+        n += 1
+    if n > 0:
+        bell()
     last_unseen = set(unseen)
-
-def bell():
-        print("\a", end="")
         
-show_recent()
+show_recent(nodisplay=args.noinit)
 
 while True:
     tag = conn._new_tag()
@@ -126,4 +139,3 @@ while True:
         if resp.startswith('{} OK'.format(tag.decode('utf-8'))):
             break
     show_recent()
-    bell()
