@@ -50,11 +50,20 @@ if typ != "OK":
     sys.exit("select {!r} failure".format(args.inbox))
 
 def cls():
+    if args.debug:
+        print ("----")
+        return
     #print ("\033[2J", end="")	#CSI n J -- Erase in Display
     #print ("\033[1;1H", end="")	#CSI n ; m H -- Cursor Position
     sys.stdout.write("\033[2J")		#CSI n J -- Erase in Display
     sys.stdout.write("\033[1;1H")	#CSI n ; m H -- Cursor Position
     sys.stdout.flush()
+
+def bell():
+    if args.debug:
+        print ("bowwow")
+        return
+    print ("\a", end="")
 
 def get_header(msg,key):
     v = msg[key]
@@ -66,9 +75,6 @@ def get_header(msg,key):
         return str(v)
     else:
         return str(hdr)
-
-def bell():
-        print("\a", end="")
 
 last_unseen = set()
 def show_recent(nodisplay=False):
@@ -83,10 +89,7 @@ def show_recent(nodisplay=False):
         sys.exit("search failed")
     unseen = data.split()
     if args.full:
-        if args.debug:
-            print ("----")
-        else:
-            cls()
+        cls()
     n = 0
     for id in unseen:
         if nodisplay:
@@ -106,10 +109,9 @@ def show_recent(nodisplay=False):
         print ("Subject: {}".format(get_header(msg, "Subject")))
         print ()
         n += 1
-    if n > 0:
-        bell()
     last_unseen = set(unseen)
-        
+    return n
+
 show_recent(nodisplay=args.noinit)
 
 while True:
@@ -118,6 +120,7 @@ while True:
         print ("DEBUG: IDLE")
     conn.send(b'%s IDLE\r\n'%(tag))
     done = False
+    arrival = False
     done_sent = False
     while True:
         resp = conn.readline().strip().decode('utf-8');
@@ -126,10 +129,14 @@ while True:
         if resp.startswith('* BYE ') or (len(resp) == 0):
             break
         if resp.startswith("* "):
-            if resp.split()[2] == "FETCH":
+            if resp.split()[2] == "EXISTS":
                 done = True
-            if resp.endswith('EXISTS'):
-                done = True
+                arrival = True
+            if args.full:
+                if resp.split()[2] == "EXPUNGE":
+                    done = True
+                if resp.split()[2] == "FETCH":
+                    done = True
         if done and not done_sent:
             if args.debug:
                 print ("DEBUG: DONE")
@@ -138,4 +145,7 @@ while True:
             
         if resp.startswith('{} OK'.format(tag.decode('utf-8'))):
             break
-    show_recent()
+    n = show_recent()
+    if n > 0 and arrival:
+        bell()
+
