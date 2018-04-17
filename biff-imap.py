@@ -63,7 +63,8 @@ def bell():
     if args.debug:
         print ("bowwow")
         return
-    print ("\a", end="")
+    sys.stdout.write("\007")
+    sys.stdout.flush()
 
 def get_header(msg,key):
     v = msg[key]
