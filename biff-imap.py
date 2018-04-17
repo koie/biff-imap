@@ -51,17 +51,15 @@ if typ != "OK":
 
 def cls():
     if args.debug:
-        print ("----")
+        print ("---cls---")
         return
-    #print ("\033[2J", end="")	#CSI n J -- Erase in Display
-    #print ("\033[1;1H", end="")	#CSI n ; m H -- Cursor Position
     sys.stdout.write("\033[2J")		#CSI n J -- Erase in Display
     sys.stdout.write("\033[1;1H")	#CSI n ; m H -- Cursor Position
     sys.stdout.flush()
 
 def bell():
     if args.debug:
-        print ("bowwow")
+        print ("---bowwow---")
         return
     sys.stdout.write("\007")
     sys.stdout.flush()
