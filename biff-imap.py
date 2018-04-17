@@ -91,12 +91,14 @@ def show_recent(nodisplay=False):
     unseen = data.split()
     if args.full:
         cls()
-    n = 0
+    n_new = 0
     for id in unseen:
         if nodisplay:
             continue
-        if not args.full and id in last_unseen:
-            continue
+        if id not in last_unseen:
+            n_new += 1
+            if not args.full:
+                continue
         if args.debug:
             print ("DEBUG: FETCH {!r}".format(id))
         #typ,data = conn.fetch(id, "(RFC822)")
@@ -109,9 +111,10 @@ def show_recent(nodisplay=False):
         print ("To: {}".format(get_header(msg, "To")))
         print ("Subject: {}".format(get_header(msg, "Subject")))
         print ()
-        n += 1
     last_unseen = set(unseen)
-    return n
+    if args.debug:
+        print ("DEBUG: n_new={!r}".format(n_new))
+    return n_new
 
 show_recent(nodisplay=args.noinit)
 
@@ -146,7 +149,7 @@ while True:
             
         if resp.startswith('{} OK'.format(tag.decode('utf-8'))):
             break
-    n = show_recent()
-    if n > 0 and arrival:
+    n_new = show_recent()
+    if n_new > 0 and arrival:
         bell()
 
