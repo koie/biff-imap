@@ -80,7 +80,6 @@ def show_recent(nodisplay=False):
     global last_unseen
     if args.debug:
         print ("DEBUG: SEARCH UNSEEN")
-    #typ,[data] = conn.search(None, "UNSEEN")
     typ,[data] = conn.uid("SEARCH", "UNSEEN")
     if args.debug:
         print ("DEBUG: {!r} {!r}".format(typ, data))
@@ -99,8 +98,7 @@ def show_recent(nodisplay=False):
                 continue
         if args.debug:
             print ("DEBUG: FETCH {!r}".format(id))
-        #typ,data = conn.fetch(id, "(RFC822)")
-        typ,data = conn.uid("FETCH", id, "(RFC822)")
+        typ,data = conn.uid("FETCH", id, "(RFC822.HEADER)")
         if args.debug:
             print ("DEBUG: {!r} {!r}".format(typ, data))
         raw = data[0][1]
