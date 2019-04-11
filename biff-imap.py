@@ -112,40 +112,50 @@ def show_recent(nodisplay=False):
         print ("DEBUG: n_new={!r}".format(n_new))
     return n_new
 
-show_recent(nodisplay=args.noinit)
-
-while True:
-    tag = conn._new_tag()
-    if args.debug:
-        print ("DEBUG: IDLE")
-    conn.send(b'%s IDLE\r\n'%(tag))
-    done = False
-    arrival = False
-    done_sent = False
+def loop():
     while True:
-        resp = conn.readline().strip().decode('utf-8');
+        tag = conn._new_tag()
         if args.debug:
-            print ("DEBUG: {!r}".format(resp))
-        if resp.startswith('* BYE ') or (len(resp) == 0):
-            break
-        if resp.startswith("* "):
-            if resp.split()[2] == "EXISTS":
-                done = True
-                arrival = True
-            if args.full:
-                if resp.split()[2] == "EXPUNGE":
-                    done = True
-                if resp.split()[2] == "FETCH":
-                    done = True
-        if done and not done_sent:
+            print ("DEBUG: IDLE")
+        conn.send(b'%s IDLE\r\n'%(tag))
+        done = False
+        arrival = False
+        done_sent = False
+        while True:
+            resp = conn.readline().strip().decode('utf-8');
             if args.debug:
-                print ("DEBUG: DONE")
-            conn.send(b'DONE\r\n')
-            done_sent = True
-            
-        if resp.startswith('{} OK'.format(tag.decode('utf-8'))):
-            break
-    n_new = show_recent()
-    if n_new > 0 and arrival:
-        bell()
+                print ("DEBUG: {!r}".format(resp))
+            if resp.startswith('* BYE ') or (len(resp) == 0):
+                break
+            if resp.startswith("* "):
+                if resp.split()[2] == "EXISTS":
+                    done = True
+                    arrival = True
+                if args.full:
+                    if resp.split()[2] == "EXPUNGE":
+                        done = True
+                    if resp.split()[2] == "FETCH":
+                        done = True
+            if done and not done_sent:
+                if args.debug:
+                    print ("DEBUG: DONE")
+                conn.send(b'DONE\r\n')
+                done_sent = True
+                
+            if resp.startswith('{} OK'.format(tag.decode('utf-8'))):
+                break
+        n_new = show_recent()
+        if n_new > 0 and arrival:
+            bell()
 
+try:
+    sys.stdout.write("\033[?1049h")	#DECSET XT_EXTSCRN
+    show_recent(nodisplay=args.noinit)
+    loop()
+except KeyboardInterrupt:
+    pass
+except Exception as ex:
+    sys.stdout.write("\033[?1049l")	#DECRST XT_EXTSCRN
+    raise
+
+sys.stdout.write("\033[?1049l")	#DECRST XT_EXTSCRN
