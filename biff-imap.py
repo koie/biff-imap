@@ -53,8 +53,8 @@ def cls():
     if args.debug:
         print ("---cls---")
         return
-    sys.stdout.write("\033[2J")		#CSI n J -- Erase in Display
-    sys.stdout.write("\033[1;1H")	#CSI n ; m H -- Cursor Position
+    sys.stdout.write("\033[2J")		#ED: CSI n J -- Erase in Display
+    sys.stdout.write("\033[1;1H")	#CUP: CSI n ; m H -- Cursor Position
     sys.stdout.flush()
 
 def bell():
