@@ -1,4 +1,5 @@
 #!/usr/local/bin/python3.6
+# vi:shiftwidth=4:expandtab:
 
 import sys
 import argparse
