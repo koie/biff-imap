@@ -1,11 +1,11 @@
 #!/usr/local/bin/python3.6
 # vi:shiftwidth=4:expandtab:
 
-import sys
 import argparse
+import email
 import getpass
 import imaplib
-import email
+import sys
 
 parser = argparse.ArgumentParser(description="Dumb Biff for IMAP")
 parser.add_argument("--host", help="IMAP server", default="")
@@ -23,7 +23,7 @@ if args.passwd is None:
     args.passwd = getpass.getpass()
 
 if args.debug:
-    print ("DEBUG: connect {!r} {!r}".format(args.host, args.port))
+    print("DEBUG: connect {!r} {!r}".format(args.host, args.port))
 if args.ssl:
     imap_ctor = imaplib.IMAP4_SSL
 else:
@@ -34,38 +34,51 @@ else:
     conn = imap_ctor(args.host)
 
 if args.debug:
-    print ("DEBUG: LOGIN{!r}".format(args.user))
-typ,[data] = conn.login(args.user, args.passwd)
-del args.passwd	#give me consolation
+    print("DEBUG: LOGIN{!r}".format(args.user))
+typ, [data] = conn.login(args.user, args.passwd)
+del args.passwd  # give me consolation
 if args.debug:
-    print ("DEBUG: {!r} {!r}".format(typ, data))
+    print("DEBUG: {!r} {!r}".format(typ, data))
 if typ != "OK":
     sys.exit("login {!r} failure".format(args.user))
 
 if args.debug:
-    print ("DEBUG: SELECT {!r}".format(args.inbox))
-typ,[data] = conn.select(args.inbox, readonly=True)
+    print("DEBUG: SELECT {!r}".format(args.inbox))
+typ, [data] = conn.select(args.inbox, readonly=True)
 if args.debug:
-    print ("DEBUG: {!r} {!r}".format(typ, data))
+    print("DEBUG: {!r} {!r}".format(typ, data))
 if typ != "OK":
     sys.exit("select {!r} failure".format(args.inbox))
 
+
 def cls():
     if args.debug:
-        print ("---cls---")
+        print("---cls---")
         return
-    sys.stdout.write("\033[2J")		#ED: CSI n J -- Erase in Display
-    sys.stdout.write("\033[1;1H")	#CUP: CSI n ; m H -- Cursor Position
+    sys.stdout.write("\033[2J")    # ED: CSI n J -- Erase in Display
+    sys.stdout.write("\033[1;1H")  # CUP: CSI n ; m H -- Cursor Position
     sys.stdout.flush()
+
+
+def alt_screen():
+    sys.stdout.write("\033[?1049h")  # DECSET XT_EXTSCRN
+    sys.stdout.flush()
+
+
+def normal_screen():
+    sys.stdout.write("\033[?1049l")  # DECRST XT_EXTSCRN
+    sys.stdout.flush()
+
 
 def bell():
     if args.debug:
-        print ("---bowwow---")
+        print("---bowwow---")
         return
     sys.stdout.write("\007")
     sys.stdout.flush()
 
-def get_header(msg,key):
+
+def get_header(msg, key):
     v = msg[key]
     if v is None:
         return ""
@@ -76,14 +89,17 @@ def get_header(msg,key):
     else:
         return str(hdr)
 
+
 last_unseen = set()
+
+
 def show_recent(nodisplay=False):
     global last_unseen
     if args.debug:
-        print ("DEBUG: SEARCH UNSEEN")
-    typ,[data] = conn.uid("SEARCH", "UNSEEN")
+        print("DEBUG: SEARCH UNSEEN")
+    typ, [data] = conn.uid("SEARCH", "UNSEEN")
     if args.debug:
-        print ("DEBUG: {!r} {!r}".format(typ, data))
+        print("DEBUG: {!r} {!r}".format(typ, data))
     if typ != "OK":
         sys.exit("search failed")
     unseen = data.split()
@@ -98,34 +114,35 @@ def show_recent(nodisplay=False):
             if not args.full:
                 continue
         if args.debug:
-            print ("DEBUG: FETCH {!r}".format(id))
-        typ,data = conn.uid("FETCH", id, "(RFC822.HEADER)")
+            print("DEBUG: FETCH {!r}".format(id))
+        typ, data = conn.uid("FETCH", id, "(RFC822.HEADER)")
         if args.debug:
-            print ("DEBUG: {!r} {!r}".format(typ, data))
+            print("DEBUG: {!r} {!r}".format(typ, data))
         raw = data[0][1]
         msg = email.message_from_bytes(raw)
-        print ("From: {}".format(get_header(msg, "From")))
-        print ("To: {}".format(get_header(msg, "To")))
-        print ("Subject: {}".format(get_header(msg, "Subject")))
-        print ()
+        print("From: {}".format(get_header(msg, "From")))
+        print("To: {}".format(get_header(msg, "To")))
+        print("Subject: {}".format(get_header(msg, "Subject")))
+        print()
     last_unseen = set(unseen)
     if args.debug:
-        print ("DEBUG: n_new={!r}".format(n_new))
+        print("DEBUG: n_new={!r}".format(n_new))
     return n_new
+
 
 def loop():
     while True:
         tag = conn._new_tag()
         if args.debug:
-            print ("DEBUG: IDLE")
-        conn.send(b'%s IDLE\r\n'%(tag))
+            print("DEBUG: IDLE")
+        conn.send(b'%s IDLE\r\n' % (tag))
         done = False
         arrival = False
         done_sent = False
         while True:
-            resp = conn.readline().strip().decode('utf-8');
+            resp = conn.readline().strip().decode('utf-8')
             if args.debug:
-                print ("DEBUG: {!r}".format(resp))
+                print("DEBUG: {!r}".format(resp))
             if resp.startswith('* BYE ') or (len(resp) == 0):
                 break
             if resp.startswith("* "):
@@ -139,24 +156,30 @@ def loop():
                         done = True
             if done and not done_sent:
                 if args.debug:
-                    print ("DEBUG: DONE")
+                    print("DEBUG: DONE")
                 conn.send(b'DONE\r\n')
                 done_sent = True
-                
+
             if resp.startswith('{} OK'.format(tag.decode('utf-8'))):
                 break
         n_new = show_recent()
         if n_new > 0 and arrival:
             bell()
 
+
+def main():
+    try:
+        if args.full:
+            alt_screen()
+        show_recent(nodisplay=args.noinit)
+        loop()
+    except:
+        if args.full:
+            normal_screen()
+        raise
+
+
 try:
-    sys.stdout.write("\033[?1049h")	#DECSET XT_EXTSCRN
-    show_recent(nodisplay=args.noinit)
-    loop()
+    main()
 except KeyboardInterrupt:
     pass
-except Exception as ex:
-    sys.stdout.write("\033[?1049l")	#DECRST XT_EXTSCRN
-    raise
-
-sys.stdout.write("\033[?1049l")	#DECRST XT_EXTSCRN
