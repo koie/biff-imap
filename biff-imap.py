@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3.6
+#!/usr/bin/env python3
 # vi:shiftwidth=4:expandtab:
 
 import argparse
