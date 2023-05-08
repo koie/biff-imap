@@ -106,6 +106,7 @@ def show_recent(nodisplay=False):
     if args.full:
         cls()
     n_new = 0
+    n_show = 0
     for id in unseen:
         if nodisplay:
             continue
@@ -118,8 +119,10 @@ def show_recent(nodisplay=False):
         typ, data = conn.uid("FETCH", id, "(RFC822.HEADER)")
         if args.debug:
             print("DEBUG: {!r} {!r}".format(typ, data))
+        n_show += 1
         raw = data[0][1]
         msg = email.message_from_bytes(raw)
+        print("[{}]".format(n_show))
         print("From: {}".format(get_header(msg, "From")))
         print("To: {}".format(get_header(msg, "To")))
         print("Subject: {}".format(get_header(msg, "Subject")))
